@@ -3,40 +3,12 @@
 
 #define LGFX_M5STACK_CORE2
 #include <LovyanGFX.hpp>
+#include "./serial_data.h"
 
 static LGFX lcd;
 
-union DataSend{
-  struct 
-  {
-    int data;
-    uint8_t flag;
-    uint8_t padding[3];
-  };
-  uint8_t bin[8];
-};
 
 uint8_t cobs[sizeof(DataSend) + 2];
-
-void cobs_encode(DataSend* source,uint8_t *encoded){
-  uint8_t count =0;
-  int marker = 0;
-
-  for(int i=0; i< sizeof(*source) +1; i++){
-    if( source->bin[i] != 0x00){
-      encoded[i+1] = source->bin[i];
-      count ++;
-    }else{
-      count ++;
-      encoded[marker] = count;
-      marker = i + 1;
-      count = 0;
-      encoded[marker] = count;
-    }
-  }
-  encoded[marker] = count;
-  encoded[sizeof(*source)+1]  = 0;
-}
 
 void setup(){
     M5.begin(true,true,true,true);
@@ -62,19 +34,26 @@ void loop(){
     lcd.printf("Battery: %1.3f\n Current: %.3f\n",batVol,batCur);
 
     if ( M5.BtnA.wasPressed()){
-      Serial.println("hello");
+      send.data_short[0] = 120;
+      send.data_short[1] = 220;
+      send.flag = 1;
+      send.type = types::SHORT;
+      cobs_encode(&send, cobs);
+      for( int i = 0; i < sizeof(cobs); i++){ Serial.write( cobs[i] ); }
     }
 
     if ( M5.BtnB.wasPressed()){
-      send.data = 120;
+      send.data_int = 120;
       send.flag = 1;
+      send.type = types::INT;
       cobs_encode(&send, cobs);
       for( int i = 0; i < sizeof(cobs); i++){ Serial.write( cobs[i] ); }
     }
 
     if ( M5.BtnC.wasPressed()){
-      send.data = 12000;
+      send.data_float = 12000.001F;
       send.flag = 1;
+      send.type = types::FLOAT;
       cobs_encode(&send, cobs);
       for( int i = 0; i < sizeof(cobs); i++){ Serial.write( cobs[i]); }
     }
